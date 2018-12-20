@@ -117,7 +117,7 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g) {
     }
 }
 
-void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
+int _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * #edges (N)
      * {
@@ -129,19 +129,24 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
      * edge properties X N */
 
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
-    if(edgeCount == 0) return;
+    if(edgeCount == 0) return 0;
 
     Graph_AllocateEdges(g, edgeCount);
     // Construct connections.
     for(int i = 0; i < edgeCount; i++) {
         Edge e;
         EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
+        if (i > 0 && edgeId == 0) {
+          printf("0 id encountered at %d, stopping\n", i);
+          return 1;
+        }
         NodeID srcId = RedisModule_LoadUnsigned(rdb);
         NodeID destId = RedisModule_LoadUnsigned(rdb);
         uint64_t relation = RedisModule_LoadUnsigned(rdb);
         assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
         _RdbLoadEntity(rdb, (GraphEntity*)&e);
     }
+    return 0;
 }
 
 void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
@@ -285,7 +290,7 @@ void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
     _RdbSaveEdges(rdb, g);
 }
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
+int RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
      /* Format:
      * #nodes
      *      #labels M
@@ -308,11 +313,13 @@ void RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
     _RdbLoadNodes(rdb, g);
 
     // Load edges.
-    _RdbLoadEdges(rdb, g);
+    int premature_exit = _RdbLoadEdges(rdb, g);
 
     // Revert to default synchronization behavior
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 
     // Resize and flush all pending changes to matrices.
     Graph_ApplyAllPending(g);
+
+    return premature_exit;
 }

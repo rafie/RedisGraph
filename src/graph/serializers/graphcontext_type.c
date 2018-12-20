@@ -131,11 +131,17 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   // Graph object.
-  RdbLoadGraph(rdb, gc->g);
+  int premature_exit = RdbLoadGraph(rdb, gc->g);
 
   // #Indices
   // (index label, index property) X #indices
-  uint32_t index_count = RedisModule_LoadUnsigned(rdb);
+  uint32_t index_count;
+  if (premature_exit) {
+    index_count = 0;
+  } else {
+    index_count = RedisModule_LoadUnsigned(rdb);
+  }
+
   gc->indices = array_new(Index*, index_count);
   for (uint32_t i = 0; i < index_count; i ++) {
     char *label = RedisModule_LoadStringBuffer(rdb, NULL);
