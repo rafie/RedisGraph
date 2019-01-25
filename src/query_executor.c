@@ -110,6 +110,7 @@ void ExpandCollapsedNodes(AST *ast) {
         AST_ReturnElementNode *retElement = returnClause->returnElements[i];        
         if(retElement->asterisks) {
             // TODO: '*' can not be mixed with any other expression!
+            // TODO would be better to handle this as AST validation
             array_clear(elementsToExpand);
             /* Expand with "RETURN *" queries.
              * Extract all entities from MATCH clause and add them to RETURN clause.
@@ -134,93 +135,15 @@ void ExpandCollapsedNodes(AST *ast) {
             TrieMapIterator_Free(it);            
             Free_AST_ReturnElementNode(retElement);
             break;
-        }
-        else {
-            elementsToExpand = array_append(elementsToExpand, retElement);
-        }
-    }
-
-    AST_ReturnElementNode **expandReturnElements = array_new(AST_ReturnElementNode*, array_len(elementsToExpand));
-
-    /* Scan return clause, search for collapsed nodes. */
-    for(int i = 0; i < array_len(elementsToExpand); i++) {
-        AST_ReturnElementNode *ret_elem = elementsToExpand[i];
-        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
-        
-        /* Detect collapsed entity,
-         * A collapsed entity is represented by an arithmetic expression
-         * of AST_AR_EXP_OPERAND type, 
-         * The operand type should be AST_AR_EXP_VARIADIC,
-         * lastly property should be missing. */
-
-        if(exp->type == AST_AR_EXP_OPERAND &&
-            exp->operand.type == AST_AR_EXP_VARIADIC &&
-            exp->operand.variadic.property == NULL) {
-            
-            /* Return clause doesn't contains entity's label,
-             * Find collapsed entity's label. */
-            char *alias = exp->operand.variadic.alias;
-            AST_GraphEntity *collapsed_entity = TrieMap_Find(identifiers, alias, strlen(alias));
-            if(collapsed_entity == TRIEMAP_NOTFOUND) {
-                // It is possible that the current alias
-                // represent an expression such as in the case of an unwind clause.
-                expandReturnElements = array_append(expandReturnElements, ret_elem);
-                continue;
-            }
-
-            /* Find label's properties. */
-            LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-            LabelStore *store;
-                        
-            if(collapsed_entity->label) {
-                /* Collapsed entity has a label. */
-                store = GraphContext_GetStore(gc, collapsed_entity->label, store_type);
-            } else {
-                /* Entity does have a label, Consult with "ALL" store. */
-                store = GraphContext_AllStore(gc, store_type);
-            }
-
-            void *ptr = NULL;       /* Label store property value, (not in use). */
-            char *prop = NULL;      /* Entity property. */
-            tm_len_t prop_len = 0;  /* Length of entity's property. */
-            AST_ArithmeticExpressionNode *expanded_exp;
-            AST_ReturnElementNode *retElem;
-            if(!store || store->properties->cardinality == 0) {
-                /* Label store was not found or
-                 * label doesn't have any properties.
-                 * Create a fake return element. */
-                expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_ConstStringVal(""));
-                // Incase an alias is given use it, otherwise use the variable name.
-                if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-                else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
-                expandReturnElements = array_append(expandReturnElements, retElem);
-            } else {
-                TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
-                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
-                    prop_len = MIN(255, prop_len);
-                    memcpy(buffer, prop, prop_len);
-                    buffer[prop_len] = '\0';
-
-                    /* Create a new return element foreach property. */
-                    expanded_exp = New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, buffer);
-                    retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-                    expandReturnElements = array_append(expandReturnElements, retElem);
-                }
-                TrieMapIterator_Free(it);
-            }
-
-            /* Discard collapsed return element. */
-            Free_AST_ReturnElementNode(ret_elem);
         } else {
-            expandReturnElements = array_append(expandReturnElements, ret_elem);
+            elementsToExpand = array_append(elementsToExpand, retElement);
         }
     }
 
     /* Override previous return clause. */
     TrieMap_Free(identifiers, TrieMap_NOP_CB);
-    array_free(elementsToExpand);
     array_free(returnClause->returnElements);
-    returnClause->returnElements = expandReturnElements;
+    returnClause->returnElements = elementsToExpand;
 }
 
 AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {

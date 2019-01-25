@@ -84,6 +84,27 @@ Record ProjectConsume(OpBase *opBase) {
     // Evaluate RETURN clause expressions.
     for(; expIdx < returnExpCount; expIdx++) {
         SIValue v = AR_EXP_Evaluate(op->expressions[expIdx], r);
+        /*
+        v will be a T_PTR if we the entity was a node or relation,
+        so we don't know what to unpack it as.
+        As such, _buildExpressions could add a toString-style function?
+        But we're not building a scalar, and we want access to the
+        RedisModule_ReplyWithArray calls, which would be weird to call from here
+        (belongs more in resultset / ResultSet_AddRecord code, especially since
+        that handles DISTINCT and such).
+        */
+        // TODO tmp while evaluating options
+        if (v.type == T_PTR) {
+          RecordEntryType t = Record_GetType(r, expIdx);
+          if (t == REC_TYPE_NODE) {
+            Node *n = Record_GetNode(r, expIdx);
+            Record_AddNode(projectedRec, expIdx, *n);
+          } else if (t == REC_TYPE_EDGE) {
+            Edge *e = Record_GetEdge(r, expIdx);
+            Record_AddEdge(projectedRec, expIdx, *e);
+          }
+          continue;
+        }
         Record_AddScalar(projectedRec, expIdx, v);
 
         // Incase expression is aliased, add it to record
