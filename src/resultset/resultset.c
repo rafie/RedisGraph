@@ -41,30 +41,35 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 static void _emit_val(RedisModuleCtx *ctx, const SIValue *v) {
   switch (v->type) {
     case T_STRING:
-    case T_CONSTSTRING: // TODO probably impossible for props
+    case T_CONSTSTRING:
       RedisModule_ReplyWithStringBuffer(ctx, v->stringval, strlen(v->stringval));
+      RedisModule_ReplyWithStringBuffer(ctx, "string", 6);
       return;
     case T_DOUBLE:
       RedisModule_ReplyWithDouble(ctx, v->doubleval);
+      RedisModule_ReplyWithStringBuffer(ctx, "double", 6);
       return;
-  case T_INT32:
-      RedisModule_ReplyWithLongLong(ctx, v->intval);
+  case T_INT64: // TODO Add other numeric types?
+      RedisModule_ReplyWithLongLong(ctx, v->longval);
+      RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
       return;
   case T_BOOL:
       (v->boolval) ? RedisModule_ReplyWithStringBuffer(ctx, "true", 4) : RedisModule_ReplyWithStringBuffer(ctx, "false", 5); // TODO make this pretty
+      RedisModule_ReplyWithStringBuffer(ctx, "boolean", 7);
       return;
   case T_NULL:
       RedisModule_ReplyWithNull(ctx);
+      RedisModule_ReplyWithStringBuffer(ctx, "NULL", 4);
       return;
   default:
-      assert("unhandled type" && false);
+      assert("Unhandled value type" && false);
   }
 }
 
 static void _enumerate_properties(RedisModuleCtx *ctx, const Entity *e) {
     RedisModule_ReplyWithArray(ctx, e->prop_count);
     for (int i = 0; i < e->prop_count; i ++) {
-        RedisModule_ReplyWithArray(ctx, 2);
+        RedisModule_ReplyWithArray(ctx, 3);
         EntityProperty *prop = &e->properties[i];
         RedisModule_ReplyWithStringBuffer(ctx, prop->name, strlen(prop->name));
         _emit_val(ctx, &prop->value);
@@ -91,12 +96,6 @@ static void _ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
     RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
-    /*
-    TODO don't know how to actually do this, since NodeID is not accessible here.
-    consider updating node/edge structs to contain their IDs?
-    alternately, we have ID at time of scan op...
-    */
-    // RedisModule_ReplyWithStringBuffer(ctx, n->label, strlen(n->label));
     GraphContext *gc = GraphContext_GetFromLTS();
     int labelID = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
     const char *label = gc->node_stores[labelID]->label;
@@ -256,7 +255,7 @@ void ResultSet_CreateHeader(ResultSet *resultset) {
     assert(resultset->header == NULL && resultset->recordCount == 0);
 
     const AST *ast = AST_GetFromLTS();
-    ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
+    ResultSetHeader *header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
 
@@ -266,13 +265,13 @@ void ResultSet_CreateHeader(ResultSet *resultset) {
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode* returnElementNode = ast->returnNode->returnElements[i];
+        AST_ReturnElementNode *returnElementNode = ast->returnNode->returnElements[i];
 
-        AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
+        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
 
-        char* column_name;
+        char *column_name;
         AR_EXP_ToString(ar_exp, &column_name);
-        Column* column = _NewColumn(column_name, returnElementNode->alias);
+        Column *column = _NewColumn(column_name, returnElementNode->alias);
         AR_EXP_Free(ar_exp);
 
         header->columns[i] = column;
