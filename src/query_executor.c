@@ -84,66 +84,42 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
     ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
 
-void ExpandCollapsedNodes(AST *ast) {    
-    char buffer[256];
-    GraphContext *gc = GraphContext_GetFromLTS();
-    
-    /* Expanding the RETURN clause is a two phase operation:
-     * 1. Scan through every arithmetic expression within the original
-     * RETURN clause and add it to a temporary vector,
-     * if we bump into an asterisks marker indicating we should expand
-     * all nodes, relations and paths, add thoese to the temporary vector.
-     * 
-     * 2. Scanning though the temporary vector we expand each collapsed entity
-     * this will form the final RETURN clause. */
+/* If we have a "RETURN *" clause, populate it with all aliased entities. */
+static void _populateReturnAll(AST *ast) {
+    // Do nothing if there is no RETURN or an array of return elements already exists.
+    if (ast->returnNode == NULL) return;
+    if (ast->returnNode->returnElements != NULL) return;
 
-    AST_ReturnNode *returnClause = ast->returnNode;
-    size_t returnElementCount = array_len(returnClause->returnElements);
-    AST_ReturnElementNode **elementsToExpand = array_new(AST_ReturnElementNode*, returnElementCount);
-
+    // Collect all entities from MATCH and CREATE clauses
+    // TODO Add entities from UNWIND
     TrieMap *identifiers = NewTrieMap();
     MatchClause_DefinedEntities(ast->matchNode, identifiers);
     CreateClause_DefinedEntities(ast->createNode, identifiers);
 
-    // Scan through return elements, see if we can find '*' marker.
-    for(int i = 0; i < returnElementCount; i++) {
-        AST_ReturnElementNode *retElement = returnClause->returnElements[i];        
-        if(retElement->asterisks) {
-            // TODO: '*' can not be mixed with any other expression!
-            // TODO would be better to handle this as AST validation
-            array_clear(elementsToExpand);
-            /* Expand with "RETURN *" queries.
-             * Extract all entities from MATCH clause and add them to RETURN clause.
-             * These will get expended later on. */
-            char *ptr;
-            tm_len_t len;
-            void *value;
-            TrieMapIterator *it = TrieMap_Iterate(identifiers, "", 0);
-            while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
-                AST_GraphEntity *entity = (AST_GraphEntity*)value;
-                if(entity->anonymous) continue;
+    // Allocate a new return element array to contain all user-provided aliases
+    AST_ReturnElementNode **entities = array_new(AST_ReturnElementNode*, identifiers->cardinality);
+    char *ptr;
+    tm_len_t len;
+    void *value;
+    TrieMapIterator *it = TrieMap_Iterate(identifiers, "", 0);
+    while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+        AST_GraphEntity *entity = value;
+        if(entity->anonymous) continue;
 
-                len = MIN(255, len);
-                memcpy(buffer, ptr, len);
-                buffer[len] = '\0';
+        // Copy each alias string to the stack
+        char buffer[len + 1];
+        memcpy(buffer, ptr, len);
+        buffer[len] = '\0';
 
-                AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(buffer, NULL);
-                AST_ReturnElementNode *returnEntity = New_AST_ReturnElementNode(arNode, NULL);
-                elementsToExpand = array_append(elementsToExpand, returnEntity);
-            }
-
-            TrieMapIterator_Free(it);            
-            Free_AST_ReturnElementNode(retElement);
-            break;
-        } else {
-            elementsToExpand = array_append(elementsToExpand, retElement);
-        }
+        // Create and add a return entity for the alias
+        AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(buffer, NULL);
+        AST_ReturnElementNode *returnEntity = New_AST_ReturnElementNode(arNode, NULL);
+        entities = array_append(entities, returnEntity);
     }
 
-    /* Override previous return clause. */
-    TrieMap_Free(identifiers, TrieMap_NOP_CB);
-    array_free(returnClause->returnElements);
-    returnClause->returnElements = elementsToExpand;
+    TrieMapIterator_Free(it);
+
+    ast->returnNode->returnElements = entities;
 }
 
 AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {
@@ -167,6 +143,7 @@ void ModifyAST(GraphContext *gc, AST *ast) {
         _replicateMergeClauseToMatchClause(ast);
     }
 
+    _populateReturnAll(ast);
     AST_NameAnonymousNodes(ast);
     _inlineProperties(ast);
 }

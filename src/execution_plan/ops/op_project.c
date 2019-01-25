@@ -12,7 +12,6 @@
 static void _buildExpressions(Project *op) {
     // Compute projected record length:
     // Number of returned expressions + number of order-by expressions.
-    ExpandCollapsedNodes(op->ast);
     ResultSet_CreateHeader(op->resultset);
 
     const AST *ast = op->ast;

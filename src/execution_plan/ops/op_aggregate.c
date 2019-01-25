@@ -14,7 +14,6 @@
 
 /* Construct an expression trees for both aggregated and none aggregated expressions. */
 static void _build_expressions(Aggregate *op) {
-    ExpandCollapsedNodes(op->ast);
     ResultSet_CreateHeader(op->resultset);
 
     AST_ReturnNode *return_node = op->ast->returnNode;
