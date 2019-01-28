@@ -89,8 +89,12 @@ void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // TODO Make a more efficient lookup for this string
     GraphContext *gc = GraphContext_GetFromLTS();
     int idx = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-    const char *label = gc->node_stores[idx]->label;
-    RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    if (idx == GRAPH_NO_LABEL) {
+        RedisModule_ReplyWithNull(ctx);
+    } else {
+        const char *label = gc->node_stores[idx]->label;
+        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    }
 
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);

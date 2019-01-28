@@ -87,8 +87,7 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
 /* If we have a "RETURN *" clause, populate it with all aliased entities. */
 static void _populateReturnAll(AST *ast) {
     // Do nothing if there is no RETURN or an array of return elements already exists.
-    if (ast->returnNode == NULL) return;
-    if (ast->returnNode->returnElements != NULL) return;
+    if (ast->returnNode == NULL || ast->returnNode->returnElements != NULL) return;
 
     // Collect all entities from MATCH and CREATE clauses
     // TODO Add entities from UNWIND
@@ -118,6 +117,7 @@ static void _populateReturnAll(AST *ast) {
     }
 
     TrieMapIterator_Free(it);
+    TrieMap_Free(identifiers, TrieMap_NOP_CB);
 
     ast->returnNode->returnElements = entities;
 }

@@ -203,7 +203,7 @@ int ResultSet_AddRecord(ResultSet* set, Record r) {
         set->skipped++;
         return RESULTSET_OK;
     }
-    // Output the currrent record
+    // Output the current record
     ResultSet_EmitRecord(set->ctx, r, set->header->columns_len);
 
     return RESULTSET_OK;
