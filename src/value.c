@@ -204,7 +204,6 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
   case T_BOOL:
     bytes_written = snprintf(buf, len, "%s", v.boolval ? "true" : "false");
     break;
-
   case T_FLOAT:
     bytes_written = snprintf(buf, len, "%f", v.floatval);
     break;

@@ -93,7 +93,6 @@ Record ProjectConsume(OpBase *opBase) {
 
             // Copy the entity to the projected record with the appropriate type
             if (t == REC_TYPE_NODE) {
-                // TODO move these steps into a streamlined interface
                 Node *n = Record_GetNode(r, record_offset);
                 Record_AddNode(projectedRec, expIdx, *n);
                 if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *n);
