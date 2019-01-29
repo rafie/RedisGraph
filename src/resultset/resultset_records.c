@@ -17,42 +17,42 @@
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values (doubles are converted to strings in the Redis layer), 
  * but we may as well be forward-thinking. */
-static void _emitSIValue(RedisModuleCtx *ctx, const SIValue v) {
+static void _emitSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type) {
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
         case T_STRING:
         case T_CONSTSTRING:
             RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
-            RedisModule_ReplyWithStringBuffer(ctx, "string", 6);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "string", 6);
             return;
         case T_INT32:
             RedisModule_ReplyWithLongLong(ctx, v.intval);
-            RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
             return;
         case T_INT64:
             RedisModule_ReplyWithLongLong(ctx, v.longval);
-            RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
             return;
         case T_UINT:
             RedisModule_ReplyWithLongLong(ctx, v.uintval);
-            RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "integer", 7);
             return;
         case T_FLOAT:
             RedisModule_ReplyWithDouble(ctx, (double)v.floatval);
-            RedisModule_ReplyWithStringBuffer(ctx, "double", 6);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "double", 6);
             return;
         case T_DOUBLE:
             RedisModule_ReplyWithDouble(ctx, v.doubleval);
-            RedisModule_ReplyWithStringBuffer(ctx, "double", 6);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "double", 6);
             return;
         case T_BOOL:
             if (v.boolval == true) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
             else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
-            RedisModule_ReplyWithStringBuffer(ctx, "boolean", 7);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "boolean", 7);
             return;
         case T_NULL:
             RedisModule_ReplyWithNull(ctx);
-            RedisModule_ReplyWithStringBuffer(ctx, "NULL", 4);
+            if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "NULL", 4);
             return;
         default:
             assert("Unhandled value type" && false);
@@ -69,7 +69,7 @@ static void _enumerateProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
         // Emit the string key
         RedisModule_ReplyWithStringBuffer(ctx, prop.name, strlen(prop.name));
         // Emit the value
-        _emitSIValue(ctx, prop.value);
+        _emitSIValue(ctx, prop.value, true);
     }
 }
 
@@ -152,16 +152,11 @@ void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numc
     // Prepare return array sized to the number of RETURN entities
     RedisModule_ReplyWithArray(ctx, numcols);
 
-    int written;
-    char value[2048];
     for(int i = 0; i < numcols; i++) {
         RecordEntryType t = Record_GetType(r, i);
         switch (t) {
             case REC_TYPE_SCALAR:
-                /* TODO This logic can be replaced with an _emitSIValue call,
-                 * which would remove string truncation and the snprintf cost. */
-                written = SIValue_ToString(Record_GetScalar(r, i), value, 2048);
-                RedisModule_ReplyWithStringBuffer(ctx, value, written);
+                _emitSIValue(ctx, Record_GetScalar(r, i), false);
                 break;
             case REC_TYPE_NODE:
                 _ResultSet_ReplyWithNode(ctx, Record_GetNode(r, i));
