@@ -38,6 +38,10 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
 // Add a new store and matrix for the given relation type 
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);
+// Retrieve the label string for a given node ID
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, NodeID id);
+// Retrieve the relation type string for a given Edge object
+const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);

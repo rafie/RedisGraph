@@ -121,6 +121,18 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   return store;
 }
 
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, NodeID id) {
+    int label_id = Graph_GetNodeLabel(gc->g, id);
+    if (label_id == GRAPH_NO_LABEL) return NULL;
+    return gc->node_stores[label_id]->label;
+}
+
+const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
+    int reltype_id = Graph_GetEdgeRelation(gc->g, e);
+    if (reltype_id == GRAPH_NO_RELATION) return NULL;
+    return gc->relation_stores[reltype_id]->label;
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------

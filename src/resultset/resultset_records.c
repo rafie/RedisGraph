@@ -1,3 +1,10 @@
+/*
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Apache License, Version 2.0,
+ * modified with the Commons Clause restriction.
+ */
+
 #include "resultset_records.h"
 #include "../value.h"
 #include "../graph/graphcontext.h"
@@ -52,21 +59,21 @@ static void _emitSIValue(RedisModuleCtx *ctx, const SIValue v) {
       }
 }
 
-static void _enumerateProperties(RedisModuleCtx *ctx, const Entity *e) {
-    RedisModule_ReplyWithArray(ctx, e->prop_count);
+static void _enumerateProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
+    int prop_count = ENTITY_PROP_COUNT(e);
+    RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
-    for (int i = 0; i < e->prop_count; i ++) {
+    for (int i = 0; i < prop_count; i ++) {
         RedisModule_ReplyWithArray(ctx, 3);
-        EntityProperty *prop = &e->properties[i];
+        EntityProperty prop = ENTITY_PROPS(e)[i];
         // Emit the string key
-        RedisModule_ReplyWithStringBuffer(ctx, prop->name, strlen(prop->name));
+        RedisModule_ReplyWithStringBuffer(ctx, prop.name, strlen(prop.name));
         // Emit the value
-        _emitSIValue(ctx, prop->value);
+        _emitSIValue(ctx, prop.value);
     }
-
 }
 
-void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
+static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // 4 top-level entities in node reply
     RedisModule_ReplyWithArray(ctx, 4);
 
@@ -76,9 +83,10 @@ void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     RedisModule_ReplyWithStringBuffer(ctx, "node", 4);
 
     // ["id", id(int)]
+    int id = ENTITY_GET_ID(n);
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
-    RedisModule_ReplyWithLongLong(ctx, n->entity->id);
+    RedisModule_ReplyWithLongLong(ctx, id);
 
     // ["labels", [label string]]
     RedisModule_ReplyWithArray(ctx, 2);
@@ -88,21 +96,20 @@ void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // Retrieve label
     // TODO Make a more efficient lookup for this string
     GraphContext *gc = GraphContext_GetFromLTS();
-    int idx = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-    if (idx == GRAPH_NO_LABEL) {
+    const char *label = GraphContext_GetNodeLabel(gc, id);
+    if (label == NULL) {
         RedisModule_ReplyWithNull(ctx);
     } else {
-        const char *label = gc->node_stores[idx]->label;
         RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
     }
 
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _enumerateProperties(ctx, n->entity);
+    _enumerateProperties(ctx, (GraphEntity*)n);
 }
 
-void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
+static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // 6 top-level entities in node reply
     RedisModule_ReplyWithArray(ctx, 6);
 
@@ -114,7 +121,7 @@ void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // ["id", id(int)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
-    RedisModule_ReplyWithLongLong(ctx, e->entity->id);
+    RedisModule_ReplyWithLongLong(ctx, ENTITY_GET_ID(e));
 
     // ["relation_type", type string]
     RedisModule_ReplyWithArray(ctx, 2);
@@ -122,24 +129,23 @@ void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // Retrieve relation type
     // TODO Make a more efficient lookup for this string
     GraphContext *gc = GraphContext_GetFromLTS();
-    int idx = Graph_GetEdgeRelation(gc->g, e);
-    const char *label = gc->relation_stores[idx]->label;
+    const char *label = GraphContext_GetEdgeRelationType(gc, e);
     RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 
     // ["src_node", srcNodeID(int)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "src_node", 8);
-    RedisModule_ReplyWithLongLong(ctx, e->srcNodeID);
+    RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
 
     // ["dest_node", destNodeID(int)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "dest_node", 9);
-    RedisModule_ReplyWithLongLong(ctx, e->destNodeID);
+    RedisModule_ReplyWithLongLong(ctx, Edge_GetDestNodeID(e));
 
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _enumerateProperties(ctx, e->entity);
+    _enumerateProperties(ctx, (GraphEntity*)e);
 }
 
 void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numcols) {
