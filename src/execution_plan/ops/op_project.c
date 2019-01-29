@@ -82,34 +82,13 @@ Record ProjectConsume(OpBase *opBase) {
     // Evaluate RETURN clause expressions.
     for(; expIdx < returnExpCount; expIdx++) {
         AR_ExpNode *exp = op->expressions[expIdx];
+        SIValue v = AR_EXP_Evaluate(op->expressions[expIdx], r);
+        Record_AddEntry(projectedRec, expIdx, v);
         // Incase expression is aliased, add it to record
         // as it might be referenced by other expressions:
         // e.g. RETURN n.v AS X ORDER BY X * X
         char *alias = op->ast->returnNode->returnElements[expIdx]->alias;
-        // Check if expression refers to a full entity
-        if (AR_EXP_IS_GRAPH_ENTITY(exp)) {
-            int record_offset = exp->operand.variadic.entity_alias_idx;
-            RecordEntryType t = Record_GetType(r, record_offset);
-
-            // Copy the entity to the projected record with the appropriate type
-            if (t == REC_TYPE_NODE) {
-                Node *n = Record_GetNode(r, record_offset);
-                Record_AddNode(projectedRec, expIdx, *n);
-                if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *n);
-            } else if (t == REC_TYPE_EDGE) {
-                Edge *e = Record_GetEdge(r, record_offset);
-                Record_AddEdge(projectedRec, expIdx, *e);
-                if(alias) Record_AddEdge(r, AST_GetAliasID(op->ast, alias), *e);
-            } else {
-                assert("Encountered unhandled type" && false);
-            }
-        } else {
-            // Add a scalar to the projected record
-            SIValue v = AR_EXP_Evaluate(exp, r);
-            Record_AddScalar(projectedRec, expIdx, v);
-            if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
-        }
-
+        if(alias) Record_AddEntry(r, AST_GetAliasID(op->ast, alias), v);
     }
 
     // Evaluate ORDER BY clause expressions.

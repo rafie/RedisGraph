@@ -59,10 +59,10 @@ class ResultSetFlowTest(FlowTestsBase):
         result = graph.query(query)
 
         expected_result = [['a.name', 'a.val'],
-                           ['Roi', '0.000000'],
-                           ['Alon', '1.000000'],
-                           ['Ailon', '2.000000'],
-                           ['Boaz', '3.000000']]
+                           ['Roi', '0'],
+                           ['Alon', '1'],
+                           ['Ailon', '2'],
+                           ['Boaz', '3']]
 
         assert(len(result.result_set) == 5) # Header row + 4 nodes
         assert(len(result.result_set[0]) == 2) # 2 columns in result set

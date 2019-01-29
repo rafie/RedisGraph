@@ -52,6 +52,20 @@ RecordEntryType Record_GetType(const Record r, int idx) {
     return r[idx].type;
 }
 
+SIValue Record_GetEntry(Record r, int idx) {
+    RecordEntryType t = Record_GetType(r, idx);
+    switch(t) {
+        case REC_TYPE_NODE:
+            return SI_NodeVal(&r[idx].value.n);
+        case REC_TYPE_EDGE:
+            return SI_EdgeVal(&r[idx].value.e);
+        case REC_TYPE_SCALAR:
+            return r[idx].value.s;
+        default:
+            assert(false);
+    }
+}
+
 SIValue Record_GetScalar(Record r,  int idx) {
     r[idx].type = REC_TYPE_SCALAR;
     return r[idx].value.s;
@@ -80,6 +94,22 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
             assert(false);
     }
     return NULL;
+}
+
+void Record_AddEntry(Record r, int idx, SIValue v) {
+    switch(SI_TYPE(v)) {
+      case T_NODE:
+          r[idx].value.n = *(Node*)v.ptrval;
+          r[idx].type = REC_TYPE_NODE;
+          return;
+      case T_EDGE:
+          r[idx].value.e = *(Edge*)v.ptrval;
+          r[idx].type = REC_TYPE_EDGE;
+          return;
+      default:
+          r[idx].value.s = v;
+          r[idx].type = REC_TYPE_SCALAR;
+  }
 }
 
 void Record_AddScalar(Record r, int idx, SIValue v) {

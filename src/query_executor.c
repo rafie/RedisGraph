@@ -83,7 +83,6 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
     Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
     ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
-
 /* If we have a "RETURN *" clause, populate it with all aliased entities. */
 static void _populateReturnAll(AST *ast) {
     // Do nothing if there is no RETURN or an array of return elements already exists.
@@ -95,6 +94,7 @@ static void _populateReturnAll(AST *ast) {
     MatchClause_DefinedEntities(ast->matchNode, identifiers);
     CreateClause_DefinedEntities(ast->createNode, identifiers);
 
+    char buffer[256];
     // Allocate a new return element array to contain all user-provided aliases
     AST_ReturnElementNode **entities = array_new(AST_ReturnElementNode*, identifiers->cardinality);
     char *ptr;
@@ -106,7 +106,7 @@ static void _populateReturnAll(AST *ast) {
         if(entity->anonymous) continue;
 
         // Copy each alias string to the stack
-        char buffer[len + 1];
+        len = MIN(255, len);
         memcpy(buffer, ptr, len);
         buffer[len] = '\0';
 

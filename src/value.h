@@ -28,10 +28,12 @@ typedef enum {
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
   T_CONSTSTRING = 0x100,
+  T_NODE = 0x200,
+  T_EDGE = 0x400,
 
   // special types for +inf and -inf on all types:
-  T_INF = 0x200,
-  T_NEGINF = 0x400,
+  T_INF = 0x800,
+  T_NEGINF = 0x1000,
 
 } SIType;
 
@@ -75,6 +77,8 @@ SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal(void);
 SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void* v);
+SIValue SI_NodeVal(void* v);
+SIValue SI_EdgeVal(void* v);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership

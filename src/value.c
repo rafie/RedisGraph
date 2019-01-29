@@ -6,6 +6,7 @@
 */
 
 #include "value.h"
+#include "graph/entities/graph_entity.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -42,6 +43,14 @@ SIValue SI_BoolVal(int b) {
 
 SIValue SI_PtrVal(void* v) {
   return (SIValue) {.ptrval = v, .type = T_PTR};
+}
+
+SIValue SI_NodeVal(void* v) {
+  return (SIValue) {.ptrval = v, .type = T_NODE};
+}
+
+SIValue SI_EdgeVal(void* v) {
+  return (SIValue) {.ptrval = v, .type = T_EDGE};
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -216,6 +225,10 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
   case T_NEGINF:
     bytes_written = snprintf(buf, len, "-inf");
     break;
+  case T_NODE:
+  case T_EDGE:
+    bytes_written = snprintf(buf, len, "%lu", ENTITY_GET_ID((GraphEntity*)v.ptrval));
+    break;
   case T_NULL:
   default:
     bytes_written = snprintf(buf, len, "NULL");
@@ -305,7 +318,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
   }
 
   // Use strcmp if values are string types
-  if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
+  if (SI_TYPE(a) & SI_STRING) return strcmp(a.stringval, b.stringval);
 
   // Attempt to cast both values to doubles
   double tmp_a, tmp_b;
@@ -318,6 +331,15 @@ int SIValue_Compare(SIValue a, SIValue b) {
     double diff = tmp_a - tmp_b;
     return COMPARE_RETVAL(diff);
   }
+
+  // Compare nodes and edges by ID
+  if ((SI_TYPE(a) == T_NODE && SI_TYPE(b) == T_NODE) ||
+      (SI_TYPE(a) == T_EDGE && SI_TYPE(b) == T_EDGE)) {
+    EntityID a_id = ENTITY_GET_ID((GraphEntity*)a.ptrval);
+    EntityID b_id = ENTITY_GET_ID((GraphEntity*)b.ptrval);
+    return a_id - b_id;
+  }
+
 
   // Reachable if values are of the same incomparable type, such as NULL
   return DISJOINT;

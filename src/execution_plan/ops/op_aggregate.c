@@ -171,12 +171,7 @@ static Record _handoff(Aggregate *op) {
         } else {
             // None aggregated expression.
             res = group->keys[keyIdx++];
-            /* TODO This expression could be a pointer to a Node or Edge rather than
-             * a scalar, in which case it will currently return NULL. This can be
-             * resolved by rewriting some of this file's logic, but it would be more
-             * sensible to extend SIValue to denote whether a pointer is to a Node or
-             * an Edge. */
-            Record_AddScalar(r, i, res);
+            Record_AddEntry(r, i, res);
         }
 
         /* TODO: this entire block can be improved, performancewise.

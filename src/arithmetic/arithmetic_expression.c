@@ -126,20 +126,8 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             } else {
                 // Alias doesn't necessarily refers to a graph entity,
                 // it could also be a constant.
-                // TODO: consider moving this logic to a generic method of Record.
                 int aliasIdx = root->operand.variadic.entity_alias_idx;
-                RecordEntryType t = Record_GetType(r, aliasIdx);
-                switch(t) {
-                    case REC_TYPE_SCALAR:
-                        result = Record_GetScalar(r, aliasIdx);
-                        break;
-                    case REC_TYPE_NODE:
-                    case REC_TYPE_EDGE:
-                        result = SI_PtrVal(Record_GetGraphEntity(r, aliasIdx));
-                        break;
-                    default:
-                        assert(false);
-                }
+                result = Record_GetEntry(r, aliasIdx);
             }
         }
     }
@@ -630,14 +618,13 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 SIValue AR_LABELS(SIValue *argv, int argc) {    
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_NODE);
 
     char *label = "";
     Node *node = argv[0].ptrval;
@@ -650,7 +637,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_EDGE);
 
     char *type = "";
     Edge *e = argv[0].ptrval;

@@ -74,6 +74,14 @@ static void _enumerateProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
 }
 
 static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
+    /*  Node reply format:
+     *  [
+     *      ["type", "node"]
+     *      ["id", Node ID (integer)]
+     *      ["label", [label (string or NULL)]]
+     *      ["properties", [[name, value, value type] X N]
+     *  ]
+     */
     // 4 top-level entities in node reply
     RedisModule_ReplyWithArray(ctx, 4);
 
@@ -82,13 +90,13 @@ static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     RedisModule_ReplyWithStringBuffer(ctx, "node", 4);
 
-    // ["id", id(int)]
+    // ["id", id (integer)]
     int id = ENTITY_GET_ID(n);
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
     RedisModule_ReplyWithLongLong(ctx, id);
 
-    // ["labels", [label string]]
+    // ["labels", [label (string)]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
     // Print label in nested array for multi-label support
@@ -110,6 +118,16 @@ static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
 }
 
 static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
+    /*  Edge reply format:
+     *  [
+     *      ["type", "relation"]
+     *      ["id", Edge ID (integer)]
+     *      ["relation_type", relation type (string)]
+     *      ["src_node", source node ID (integer)]
+     *      ["dest_node", destination node ID (integer)]
+     *      ["properties", [[name, value, value type] X N]
+     *  ]
+     */
     // 6 top-level entities in node reply
     RedisModule_ReplyWithArray(ctx, 6);
 
@@ -118,12 +136,12 @@ static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     RedisModule_ReplyWithStringBuffer(ctx, "relation", 8);
 
-    // ["id", id(int)]
+    // ["id", id (integer)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
     RedisModule_ReplyWithLongLong(ctx, ENTITY_GET_ID(e));
 
-    // ["relation_type", type string]
+    // ["relation_type", type (string)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "relation_type", 13);
     // Retrieve relation type
@@ -132,12 +150,12 @@ static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     const char *label = GraphContext_GetEdgeRelationType(gc, e);
     RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 
-    // ["src_node", srcNodeID(int)]
+    // ["src_node", srcNodeID (integer)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "src_node", 8);
     RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
 
-    // ["dest_node", destNodeID(int)]
+    // ["dest_node", destNodeID (integer)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "dest_node", 9);
     RedisModule_ReplyWithLongLong(ctx, Edge_GetDestNodeID(e));
@@ -153,19 +171,16 @@ void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numc
     RedisModule_ReplyWithArray(ctx, numcols);
 
     for(int i = 0; i < numcols; i++) {
-        RecordEntryType t = Record_GetType(r, i);
-        switch (t) {
-            case REC_TYPE_SCALAR:
-                _emitSIValue(ctx, Record_GetScalar(r, i), false);
+        SIValue entry = Record_GetEntry(r, i);
+        switch (SI_TYPE(entry)) {
+            case T_NODE:
+                _ResultSet_ReplyWithNode(ctx, (Node*)entry.ptrval);
                 break;
-            case REC_TYPE_NODE:
-                _ResultSet_ReplyWithNode(ctx, Record_GetNode(r, i));
-                break;
-            case REC_TYPE_EDGE:
-                _ResultSet_ReplyWithEdge(ctx, Record_GetEdge(r, i));
+            case T_EDGE:
+                _ResultSet_ReplyWithEdge(ctx, (Edge*)entry.ptrval);
                 break;
             default:
-                assert("tried to write unhandled type to result set" && false);
+                _emitSIValue(ctx, Record_GetScalar(r, i), false);
         }
     }
 }
