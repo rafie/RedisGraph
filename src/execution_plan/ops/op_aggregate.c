@@ -32,6 +32,7 @@ static void _build_expressions(Aggregate *op) {
             op->none_aggregated_expressions = array_append(op->none_aggregated_expressions, exp);
         } else {
             op->expression_classification[i] = 1;
+            AR_EXP_Free(exp);
         }
     }
 
@@ -276,7 +277,7 @@ void AggregateFree(OpBase *opBase) {
     if(op->order_expressions) {
         uint32_t expCount = array_len(op->ast->orderNode->expressions);
         for(int i = 0; i < expCount; i++) AR_EXP_Free(op->order_expressions[i]);
-        rm_free(op->order_expressions);
+        array_free(op->order_expressions);
     }
 
     FreeGroupCache(op->groups);

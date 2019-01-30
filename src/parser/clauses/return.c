@@ -31,9 +31,7 @@ int _ContainsAggregation(AST_ArithmeticExpressionNode *exp) {
     if(exp->type == AST_AR_EXP_OPERAND) return 0;
 
     /* Try to get an aggregation function. */
-    AggCtx* ctx;
-    Agg_GetFunc(exp->op.function, &ctx);
-    if(ctx != NULL) return 1;
+    if (Agg_FuncExists(exp->op.function)) return 1;
 
     /* Scan sub expressions. */
     for(int i = 0; i < Vector_Size(exp->op.args); i++) {

@@ -28,8 +28,8 @@ static bool _record_islt(Record a, Record b, const Sort *op) {
     uint comparables = array_len(op->ast->orderNode->expressions);
 
     for(uint i = 0; i < comparables; i++) {
-        SIValue aVal = Record_GetScalar(a, offset+i);
-        SIValue bVal = Record_GetScalar(b, offset+i);
+        SIValue aVal = Record_GetEntry(a, offset+i);
+        SIValue bVal = Record_GetEntry(b, offset+i);
         int rel = SIValue_Order(aVal, bVal);
         if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
         rel *= op->direction;   // Flip value for descending order.
@@ -57,8 +57,8 @@ static int _record_compare(Record a, Record b, const Sort *op) {
     uint comparables = array_len(op->ast->orderNode->expressions);
 
     for(uint i = 0; i < comparables; i++) {
-        SIValue aVal = Record_GetScalar(a, offset+i);
-        SIValue bVal = Record_GetScalar(b, offset+i);
+        SIValue aVal = Record_GetEntry(a, offset+i);
+        SIValue bVal = Record_GetEntry(b, offset+i);
         int rel = SIValue_Order(aVal, bVal);
         if(rel) return rel;
     }

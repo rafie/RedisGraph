@@ -94,7 +94,7 @@ Record ProjectConsume(OpBase *opBase) {
     // Evaluate ORDER BY clause expressions.
     for(; expIdx < expCount; expIdx++) {
         SIValue v = AR_EXP_Evaluate(op->expressions[expIdx], r);
-        Record_AddScalar(projectedRec, expIdx, v);
+        Record_AddEntry(projectedRec, expIdx, v);
     }
 
     Record_Free(r);
