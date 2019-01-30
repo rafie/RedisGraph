@@ -17,7 +17,7 @@
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values (doubles are converted to strings in the Redis layer), 
  * but we may as well be forward-thinking. */
-static void _emitSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type) {
+static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v, bool print_type) {
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
         case T_STRING:
@@ -59,7 +59,7 @@ static void _emitSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type) 
       }
 }
 
-static void _enumerateProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
+static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
@@ -69,7 +69,7 @@ static void _enumerateProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
         // Emit the string key
         RedisModule_ReplyWithStringBuffer(ctx, prop.name, strlen(prop.name));
         // Emit the value
-        _emitSIValue(ctx, prop.value, true);
+        _ResultSet_ReplyWithScalar(ctx, prop.value, true);
     }
 }
 
@@ -104,7 +104,7 @@ static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // Retrieve label
     // TODO Make a more efficient lookup for this string
     GraphContext *gc = GraphContext_GetFromLTS();
-    const char *label = GraphContext_GetNodeLabel(gc, id);
+    const char *label = GraphContext_GetNodeLabel(gc, n);
     if (label == NULL) {
         RedisModule_ReplyWithNull(ctx);
     } else {
@@ -114,7 +114,7 @@ static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _enumerateProperties(ctx, (GraphEntity*)n);
+    _ResultSet_ReplyWithProperties(ctx, (GraphEntity*)n);
 }
 
 static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
@@ -163,7 +163,7 @@ static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _enumerateProperties(ctx, (GraphEntity*)e);
+    _ResultSet_ReplyWithProperties(ctx, (GraphEntity*)e);
 }
 
 void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numcols) {
@@ -180,7 +180,7 @@ void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numc
                 _ResultSet_ReplyWithEdge(ctx, (Edge*)entry.ptrval);
                 break;
             default:
-                _emitSIValue(ctx, Record_GetScalar(r, i), false);
+                _ResultSet_ReplyWithScalar(ctx, Record_GetScalar(r, i), false);
         }
     }
 }

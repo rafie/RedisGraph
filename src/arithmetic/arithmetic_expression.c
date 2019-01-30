@@ -618,6 +618,7 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
+    assert(SI_TYPE(argv[0]) == T_NODE || SI_TYPE(argv[0]) == T_EDGE);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }

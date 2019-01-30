@@ -131,16 +131,7 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     uint rLen = Record_length(r);
     SIValue values[rLen];
     for(int i = 0; i < rLen; i++) {
-        RecordEntryType t = Record_GetType(r, i);
-        if (t == REC_TYPE_SCALAR) {
-            values[i] = r[i].value.s;
-        } else {
-            /* Store the entity ID for Node and Edge entries.
-             * Since an offset in the record will never correspond to both
-             * nodes and edges, we don't need to worry about non-unique IDs. */
-            GraphEntity *ge = Record_GetGraphEntity(r, i);
-            values[i] = SI_UintVal(ge->entity->id);
-        }
+        values[i] = Record_GetEntry(r, i);
     }
 
     size_t required_len = SIValue_StringConcatLen(values, rLen);

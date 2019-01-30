@@ -32,8 +32,8 @@ typedef enum {
   T_EDGE = 0x400,
 
   // special types for +inf and -inf on all types:
-  T_INF = 0x800,
-  T_NEGINF = 0x1000,
+  T_INF = 0x40000000,
+  T_NEGINF = 0x80000000,
 
 } SIType;
 

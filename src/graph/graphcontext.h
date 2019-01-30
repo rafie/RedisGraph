@@ -16,7 +16,7 @@ typedef struct {
   LabelStore *relation_allstore;   // Schema for all relation types
   LabelStore *node_allstore;       // Schema for all/unspecified node labels
   LabelStore **relation_stores;    // Array of schemas for each relation type
-  LabelStore **node_stores;        // Array of schemas for each node label 
+  LabelStore **node_stores;        // Array of schemas for each node label
 
   Index **indices;                 // Array of all indices on label-property pairs
 } GraphContext;
@@ -36,10 +36,10 @@ LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
 LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t);
 // Add a new store and matrix for the given node label
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
-// Add a new store and matrix for the given relation type 
+// Add a new store and matrix for the given relation type
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);
-// Retrieve the label string for a given node ID
-const char* GraphContext_GetNodeLabel(const GraphContext *gc, NodeID id);
+// Retrieve the label string for a given Node object
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
 // Retrieve the relation type string for a given Edge object
 const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
 

@@ -121,8 +121,8 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   return store;
 }
 
-const char* GraphContext_GetNodeLabel(const GraphContext *gc, NodeID id) {
-    int label_id = Graph_GetNodeLabel(gc->g, id);
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
+    int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
     if (label_id == GRAPH_NO_LABEL) return NULL;
     return gc->node_stores[label_id]->label;
 }
