@@ -27,6 +27,8 @@ AST_ReturnNode* New_AST_ReturnNode(AST_ReturnElementNode **returnElements, int d
 
 int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node);
 
+int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode, AST_ArithmeticExpressionOP **funcs);
+
 void ReturnClause_ReferredEntities(const AST_ReturnNode *return_node, TrieMap *referred_nodes);
 
 void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *referred_funcs);

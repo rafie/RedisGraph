@@ -71,6 +71,24 @@ void ReturnClause_ReferredEntities(const AST_ReturnNode *returnNode, TrieMap *re
     }
 }
 
+// Collect aggregate functions invoked by the return clause.
+int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode, AST_ArithmeticExpressionOP **funcs) {
+  uint elemCount = array_len(returnNode->returnElements);
+  int aggregate_count = 0;
+  for (uint i = 0; i < elemCount; i++) {
+    AST_ReturnElementNode *retElem = returnNode->returnElements[i];
+    AST_ArithmeticExpressionNode *exp = retElem->exp;
+    // Collect all aggregate functions except count, which may validly be invoked for graph entities.
+    if(exp && exp->type == AST_AR_EXP_OP &&
+        Agg_FuncExists(exp->op.function) &&
+        strcasecmp(exp->op.function, "count") != 0) {
+      funcs[aggregate_count] = &exp->op;
+      aggregate_count ++;
+    }
+  }
+  return aggregate_count;
+}
+
 void ReturnClause_ReferredFunctions(const AST_ReturnNode *returnNode, TrieMap *referred_funcs) {
     if(!returnNode) return;
 
