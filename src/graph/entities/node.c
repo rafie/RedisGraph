@@ -11,6 +11,7 @@
 #include "edge.h"
 #include "assert.h"
 #include "graph_entity.h"
+#include "../../util/rmalloc.h"
 
 Node* Node_New(const char *label, const char *alias) {
 	Node* n = calloc(1, sizeof(Node));
@@ -21,6 +22,12 @@ Node* Node_New(const char *label, const char *alias) {
 	if(alias != NULL) n->alias = strdup(alias);
 
 	return n;
+}
+
+Node* Node_Clone(const Node *n) {
+	Node *ret = malloc(sizeof(Node));
+	*ret = *n;
+	return ret;
 }
 
 int Node_Compare(const Node *a, const Node *b) {

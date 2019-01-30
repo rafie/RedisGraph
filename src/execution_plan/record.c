@@ -55,6 +55,10 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 SIValue Record_GetEntry(Record r, int idx) {
     RecordEntryType t = Record_GetType(r, idx);
     switch(t) {
+        /* TODO Implement a safer mechanism for returning nodes and
+         * edges. The pointers returned here access the Record
+         * itself, making them unsafe for use past the (frequently
+         * short) lifetime of the Record! */
         case REC_TYPE_NODE:
             return SI_NodeVal(&r[idx].value.n);
         case REC_TYPE_EDGE:

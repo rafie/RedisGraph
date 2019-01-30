@@ -28,6 +28,9 @@ typedef struct {
 /* Creates a new node. */
 Node* Node_New(const char *label, const char *alias);
 
+/* Copies an existing node, reusing all internal pointers. */
+Node* Node_Clone(const Node *n);
+
 /* Checks if nodes are "equal" */
 int Node_Compare(const Node *a, const Node *b);
 

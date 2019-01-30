@@ -14,9 +14,6 @@
 #include "../parser/ast.h"
 #include "./agg_ctx.h"
 
-#define AR_EXP_IS_GRAPH_ENTITY(exp) ((exp) && (exp)->type == AR_EXP_OPERAND && \
-    (exp)->operand.type == AR_EXP_VARIADIC && (exp)->operand.variadic.entity_prop == NULL)
-
 /* Forward declarations. */
 struct AR_ExpNode;
 

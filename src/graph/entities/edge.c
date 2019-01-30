@@ -25,6 +25,12 @@ Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alia
 	return e;
 }
 
+Edge* Edge_Clone(const Edge *n) {
+	Edge *ret = malloc(sizeof(Edge));
+	*ret = *n;
+	return ret;
+}
+
 NodeID Edge_GetSrcNodeID(const Edge* edge) {
 	assert(edge);
 	return edge->srcNodeID;

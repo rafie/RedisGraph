@@ -47,6 +47,18 @@ static void _build_expressions(Aggregate *op) {
     }
 }
 
+static SIValue _cloneGroupKey(const SIValue v) {
+    SIValue ret;
+    switch(SI_TYPE(v)) {
+        case T_NODE:
+            return SI_NodeVal(Node_Clone(v.ptrval));
+        case T_EDGE:
+            return SI_EdgeVal(Edge_Clone(v.ptrval));
+        default:
+            return v;
+    }
+}
+
 static AR_ExpNode** _build_aggregated_expressions(Aggregate *op) {
     AST_ReturnNode *return_node = op->ast->returnNode;
     AR_ExpNode **agg_exps = array_new(AR_ExpNode*, 1);
@@ -70,7 +82,7 @@ static Group* _CreateGroup(Aggregate *op, Record r) {
     /* Clone group keys. */
     size_t key_count = array_len(op->none_aggregated_expressions);
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
-    for(int i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
+    for(int i = 0; i < key_count; i++) group_keys[i] = _cloneGroupKey(op->group_keys[i]);
 
     // There's no need to keep a reference to record
     // if we're not performing aggregations.
