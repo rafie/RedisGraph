@@ -266,9 +266,7 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
       Vector_Get(func->args, j, &child);
       // Check if the child is a variadic with no property specified, which may
       // refer to a graph entity
-      if (child->type == AST_AR_EXP_OPERAND &&
-          child->operand.type == AST_AR_EXP_VARIADIC &&
-          child->operand.variadic.property == NULL) {
+      if (EXPRESSION_IS_ALIAS(child)) {
         char *alias = child->operand.variadic.alias;
         // Look up alias in the entities defined by the MATCH clause
         if(TrieMap_Find(entities, alias, strlen(alias)) != TRIEMAP_NOTFOUND) {

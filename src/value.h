@@ -27,9 +27,8 @@ typedef enum {
   T_FLOAT = 0x020,
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
-  T_CONSTSTRING = 0x100,
-  T_NODE = 0x200,
-  T_EDGE = 0x400,
+  T_NODE = 0x100,
+  T_EDGE = 0x200,
 
   // special types for +inf and -inf on all types:
   T_INF = 0x40000000,
@@ -37,14 +36,19 @@ typedef enum {
 
 } SIType;
 
-#define SI_STRING (T_STRING | T_CONSTSTRING)
+typedef enum {
+  M_NONE = 0,
+  M_SELF = 0x1,
+  M_VOLATILE = 0x2,
+  M_CONST = 0x4
+} SIAllocation;
+
 #define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
 #define SI_TYPE(value) (value).type
 
 /* Returns true if aVal and bVal are of the same type, are both string types, or are both numeric types. */
 #define SI_COMPARABLE(aVal, bVal) ((aVal).type == (bVal).type || \
-		(((aVal).type & SI_NUMERIC) && (bVal).type & SI_NUMERIC) || \
-		(((aVal).type & SI_STRING) && (bVal).type & SI_STRING))
+		(((aVal).type & SI_NUMERIC) && (bVal).type & SI_NUMERIC))
 
 /* Returns 1 if argument is positive, -1 if argument is negative,
  * and 0 if argument is zero (matching the return style of the strcmp family).
@@ -66,6 +70,7 @@ typedef struct {
     void* ptrval;
   };
   SIType type;
+  SIAllocation allocation;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
@@ -118,8 +123,12 @@ int SIValue_Order(const SIValue a, const SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
 
+/* If an SIValue holds a pointer to a volatile memory region, copy that memory
+ * so that it is held by the SIValue. */
+void SIValue_Persist(SIValue *v);
+
 /* Free an SIValue's internal property if that property is a heap allocation owned
- * by this object. This is only the case when the type is T_STRING. */
+ * by this object. */
 void SIValue_Free(SIValue *v);
 
 #endif // __SECONDARY_VALUE_H__

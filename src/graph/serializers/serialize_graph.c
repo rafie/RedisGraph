@@ -157,7 +157,7 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
         RedisModule_SaveUnsigned(rdb, v->boolval);
     } else if (v->type == T_NULL) {
         return; // No data beyond the type needs to be encoded for a NULL value.
-    } else if (v->type & SI_STRING) {
+    } else if (v->type == T_STRING) {
         RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
     } else {
         assert(0 && "Attempted to serialize value of invalid type.");

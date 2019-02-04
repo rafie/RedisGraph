@@ -26,11 +26,9 @@ Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r) {
 void FreeGroup(Group* g) {
     if(g == NULL) return;
     if(g->r) Record_Free(g->r);
-    if(g->key_count) {
+    if(g->keys) {
         for (int i = 0; i < g->key_count; i ++) {
-            if ((SI_TYPE(g->keys[i]) == T_NODE) || (SI_TYPE(g->keys[i]) == T_EDGE)) {
-                free(g->keys[i].ptrval);
-            }
+            SIValue_Free(&g->keys[i]);
         }
         rm_free(g->keys);
     }

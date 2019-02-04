@@ -21,7 +21,6 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v, boo
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
         case T_STRING:
-        case T_CONSTSTRING:
             RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
             if (print_type) RedisModule_ReplyWithStringBuffer(ctx, "string", 6);
             return;

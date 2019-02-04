@@ -7,6 +7,8 @@
 
 #include "value.h"
 #include "graph/entities/graph_entity.h"
+#include "graph/entities/node.h"
+#include "graph/entities/edge.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -15,7 +17,9 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 
-SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
+SIValue SI_IntVal(int i) {
+  return (SIValue){.intval = i, .type = T_INT32};
+}
 
 SIValue SI_LongVal(int64_t i) {
   return (SIValue){.longval = i, .type = T_INT64};
@@ -38,35 +42,35 @@ SIValue SI_NullVal(void) {
 }
 
 SIValue SI_BoolVal(int b) {
-  return (SIValue) {.boolval = b, .type = T_BOOL};
+  return (SIValue){.boolval = b, .type = T_BOOL};
 }
 
 SIValue SI_PtrVal(void* v) {
-  return (SIValue) {.ptrval = v, .type = T_PTR};
+  return (SIValue){.ptrval = v, .type = T_PTR};
 }
 
 SIValue SI_NodeVal(void* v) {
-  return (SIValue) {.ptrval = v, .type = T_NODE};
+  return (SIValue){.ptrval = v, .type = T_NODE, .allocation = M_VOLATILE};
 }
 
 SIValue SI_EdgeVal(void* v) {
-  return (SIValue) {.ptrval = v, .type = T_EDGE};
+  return (SIValue){.ptrval = v, .type = T_EDGE, .allocation = M_VOLATILE};
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
-  return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
+  return (SIValue){.stringval = rm_strdup(s), .type = T_STRING, .allocation = M_SELF};
 }
 
 SIValue SI_ConstStringVal(char *s) {
-  return (SIValue){.stringval = s, .type = T_CONSTSTRING};
+  return (SIValue){.stringval = s, .type = T_STRING, .allocation = M_CONST};
 }
 
 SIValue SI_TransferStringVal(char *s) {
-  return (SIValue){.stringval = s, .type = T_STRING};
+  return (SIValue){.stringval = s, .type = T_STRING, .allocation = M_SELF};
 }
 
 SIValue SI_Clone(SIValue v) {
-  if (v.type & SI_STRING) {
+  if (v.type == T_STRING) {
     // Allocate a new copy of the input's string value
     return SI_DuplicateStringVal(v.stringval);
   }
@@ -76,12 +80,9 @@ SIValue SI_Clone(SIValue v) {
 }
 
 SIValue SI_ShallowCopy(SIValue v) {
-  if (v.type & SI_STRING) {
-    // Re-use the pointer of the input's string value
-    return SI_ConstStringVal(v.stringval);
-  }
-  SIValue dup;
-  memcpy(&dup, &v, sizeof(SIValue));
+  SIValue dup = v;
+  // If the original value owns an allocation, mark that the duplicate shares it
+  if (v.allocation == M_SELF) dup.allocation = M_CONST;
   return dup;
 }
 
@@ -168,9 +169,7 @@ int SI_ParseValue(SIValue *v, char *str) {
 
   case T_STRING:
     v->stringval = rm_strdup(str);
-    break;
-  case T_CONSTSTRING:
-    v->stringval = str;
+    v->allocation = M_SELF;
     break;
   case T_INT32:
   case T_INT64:
@@ -197,7 +196,6 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
-  case T_CONSTSTRING:
     strncpy(buf, v.stringval, len);
     bytes_written = strlen(buf);
     break;
@@ -288,7 +286,7 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count) {
   for(int i = 0; i < string_count; i ++) {
     /* String elements representing bytes size strings,
      * for all other SIValue types 32 bytes should be enough. */
-    elem_len = (strings[i].type & SI_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+    elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
     length += elem_len;
   }
 
@@ -318,7 +316,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
   }
 
   // Use strcmp if values are string types
-  if (SI_TYPE(a) & SI_STRING) return strcmp(a.stringval, b.stringval);
+  if (SI_TYPE(a) == T_STRING) return strcmp(a.stringval, b.stringval);
 
   // Attempt to cast both values to doubles
   double tmp_a, tmp_b;
@@ -353,9 +351,9 @@ int SIValue_Order(const SIValue a, const SIValue b) {
   if (cmp != DISJOINT) return cmp;
 
   // Cypher's orderability property defines string < boolean < numeric < NULL.
-  if (a.type & SI_STRING) {
+  if (a.type == T_STRING) {
     return -1;
-  } else if (b.type & SI_STRING) {
+  } else if (b.type == T_STRING) {
     return 1;
   } else if (a.type == T_BOOL) {
     return -1;
@@ -374,7 +372,6 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 void SIValue_Print(FILE *outstream, SIValue *v) {
   switch (v->type) {
     case T_STRING:
-    case T_CONSTSTRING:
       fprintf(outstream, "%s", v->stringval);
       break;
     case T_INT32:
@@ -397,12 +394,36 @@ void SIValue_Print(FILE *outstream, SIValue *v) {
   }
 }
 
-void SIValue_Free(SIValue *v) {
-	// Only values of type T_STRING are heap allocations owned by the SIValue
-	// that need to be freed.
-	if (v->type == T_STRING) {
-		rm_free(v->stringval);
-		v->stringval = NULL;
+void SIValue_Persist(SIValue *v) {
+	if (v->allocation == M_VOLATILE) {
+		if (v->type == T_NODE) {
+			Node *clone = rm_malloc(sizeof(Node));
+			clone = memcpy(clone, v->ptrval, sizeof(Node));
+			v->ptrval = clone;
+		} else if (v->type == T_EDGE) {
+			Edge *clone = rm_malloc(sizeof(Edge));
+			clone = memcpy(clone, v->ptrval, sizeof(Edge));
+			v->ptrval = clone;
+		}
+		v->allocation = M_SELF;
 	}
+}
+
+void SIValue_Free(SIValue *v) {
+  // The free routine only performs work if it owns a heap allocation.
+	if (v->allocation == M_SELF) {
+		switch (v->type) {
+			case T_STRING:
+				rm_free(v->stringval);
+				v->stringval = NULL;
+				return;
+			case T_NODE:
+			case T_EDGE:
+				rm_free(v->ptrval);
+				return;
+			default:
+				return;
+    }
+  }
 }
 

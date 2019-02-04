@@ -32,9 +32,6 @@ typedef struct Edge Edge;
 /* Creates a new edge, connecting src to dest node. */
 Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
 
-/* Copies an existing edge, reusing all internal pointers. */
-Edge* Edge_Clone(const Edge *n);
-
 // Retrieve edge source node ID.
 NodeID Edge_GetSrcNodeID(const Edge *edge);
 
