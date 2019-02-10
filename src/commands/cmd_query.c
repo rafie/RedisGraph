@@ -63,25 +63,23 @@ void _MGraph_Query(void *args) {
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
-    CommandCtx_ThreadSafeContextUnlock(qctx);
-
     if(!gc) {
-        if (!ast->createNode && !ast->mergeNode) {
+        if(!ast->createNode && !ast->mergeNode) {
+            CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
         }
         assert(!readonly);
-
-        CommandCtx_ThreadSafeContextLock(qctx);
         gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-        CommandCtx_ThreadSafeContextUnlock(qctx);
 
-        if (!gc) {
+        if(!gc) {
+            CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
             goto cleanup;
         }
         /* TODO: free graph if no entities were created. */
-    }    
+    }
+    CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
